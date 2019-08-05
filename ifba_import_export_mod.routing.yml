@@ -1,0 +1,14 @@
+ifba_import_export_mod.content_export:
+        path: '/ifba/export'
+        defaults:
+          _title: 'IFBA CSV Export'
+          _form: '\Drupal\ifba_import_export_mod\Form\SampleExportForm'
+        requirements:
+          _permission: 'access content'
+ifba_import_export_mod.content_import:
+        path: '/ifba/import-csv'
+        defaults:
+          _title: 'IFBA CSV Import'
+          _form: '\Drupal\ifba_import_export_mod\Form\SampleImportForm'
+        requirements:
+          _permission: 'access content'

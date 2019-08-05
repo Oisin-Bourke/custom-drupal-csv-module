@@ -1,0 +1,154 @@
+<?php
+
+namespace Drupal\ifba_import_export_mod\Model;
+
+use Drupal\node\Entity\Node;
+
+/**
+ * Class SampleExportHelper
+ *
+ * Set of static methods that help the ExportForm class
+ *
+ * @package Drupal\ifba_module\Form
+ */
+class SampleExportHelper {
+
+  /**
+   * @param $container_id
+   *
+   * @return \Drupal\Core\Entity\EntityInterface[]|\Drupal\node\Entity\Node[]
+   */
+  public static function readIfbaSampleData($container_id){
+    /* Get entity query object for entity type 'node' */
+    $query = \Drupal::entityQuery('node');
+
+    $node_ids = [];
+
+    /* Use query object with condition filters to execute query and return node ids array */
+    if($container_id===0) {
+        $node_ids = $query->condition('type', 'irish_fish_biochronology_archive')
+                          ->condition('status', 1)
+                          ->execute();
+    }else{
+        $node_ids = $query->condition('type', 'irish_fish_biochronology_archive')
+                          ->condition('field_contained_in',$container_id)
+                          ->condition('status', 1)
+                          ->execute();
+    }
+    /* Pass node ids array into loadMultiple to return all associated data/nodes */
+    $nodes_result = Node::loadMultiple($node_ids);
+
+    return $nodes_result;
+  }
+
+  /**
+   * Read IFBA container data (not used)
+   *
+   * Read all IFBA container data from Drupal DB
+   *
+   * @return \Drupal\Core\Entity\EntityInterface[]|\Drupal\node\Entity\Node[]
+   */
+  public static function readIfbaContainerData(){
+    /* Get entity query object for entity type 'node' */
+    $query = \Drupal::entityQuery('node');
+
+    /*Use query object with condition filters to execute query and return node ids array*/
+    $node_ids = $query->condition('type','ifba_archive_container')
+      ->condition('status',1)
+      ->execute();
+
+    /*Pass node ids array into loadMultiple to return all associated data/nodes*/
+    $nodes_result = Node::loadMultiple($node_ids);
+
+    return $nodes_result;
+  }
+
+  /**
+   * Create sample objects array from nodes array
+   *
+   * The sample setters take a node and do the reading/processing from DB
+   *
+   * @param array $nodes_result
+   *
+   * @return array samples
+   */
+  public static function createSamplesFromNodes(array $nodes_result){
+
+    $samples = [];
+
+    foreach ($nodes_result as $node){
+      /*Instantiate instance of Sample model data class*/
+      $sample = new Sample();
+
+      $sample->setId($node);//PK
+
+      $sample->setApproximateSampleAmount($node);
+      $sample->setArchivistComments($node);
+      $sample->setContainedIn($node);//FK (Sample Set Container)
+      $sample->setDateCollected($node);
+      $sample->setDateMasked($node);
+      $sample->setFate($node);
+      $sample->setFieldComments($node);
+      $sample->setFishLength($node);
+      $sample->setFishOrigin($node);
+      $sample->setFishTagType($node);//1 : M (Field Collection Item)
+      $sample->setFishWeight($node);
+      $sample->setSex($node);//1 : M (Field Collection Item)
+      $sample->setGeographicFeature($node);
+      $sample->setIfbaTimeTable($node);
+      $sample->setLabNumber($node);
+      $sample->setLifeStage($node);
+      $sample->setMaturity($node);//1 : M (Field Collection Item)
+      $sample->setRepresentativeSample($node);
+      $sample->setSpecies($node);
+
+      array_push($samples,$sample);//push sample object to array samples
+    }
+  return $samples;
+  }
+
+  /**
+   * CSV header for ifba samples
+   *
+   * @return string
+   */
+  public static function writeSamplesCSVHeader(){
+    return  'id,approximateSampleAmount,archivistComments,containedIn,dateCollected,'
+      .'dateMasked,fate,fieldComments,fishLength,fishOrigin,fishTagType,'
+      .'fishWeight,sex,geographicFeature,ifbaTimeTable,labNumber,lifeStage,'
+      .'maturity,representativeSample,species'
+      .PHP_EOL;
+  }
+
+  /**
+   * Write samples to CSV file...this could take an array of any object content types
+   *
+   * @param array
+   * An array of Sample objects
+   *
+   * @return string/boolean
+   *  Message for user or false if error
+   */
+  public static function writeSamplesToCSV(array $samples){
+
+    $file = 'samples_export.csv';
+
+    if($handle = fopen($file,'w')){
+
+      /* Write csv header at first row*/
+      fwrite($handle, self::writeSamplesCSVHeader());
+
+      /*use PHP fputcsv function to write each sample object's fields to CSV*/
+      foreach ($samples as $fields){
+        fputcsv($handle,get_object_vars($fields));
+      }
+
+      fclose($handle);
+
+      return 'File ' . $file . '  generated successfully.';
+    }else{
+      return false;
+    }
+  }
+
+}

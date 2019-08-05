@@ -1,0 +1,6 @@
+name: IFBA Import and Export CSV Module
+description: Custom module to handle IFBA import and export of CSV
+
+package: Custom
+type: module
+core: 8.x
