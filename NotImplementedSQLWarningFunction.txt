@@ -1,0 +1,141 @@
+
+    /**
+     * *** NOT IMPLEMENTED INCOMPLETE FUNCTION ***
+     *
+     * This function should check for other entities with the same fields
+     * less the primary key/title field.
+     *
+     * 1) Get the values of the newly created sample entity (including field collections)
+     *
+     * 2) Check those values with a series of and conditions using:
+     *
+     *    ->condition(field name, value, operator)
+     *
+     * This works for values and target_ids as they share a common bundle/entity_id
+     *
+     * ** PROBLEM:  Field Collection values will always have a different value as
+     *              they are new entities. Furthermore, field collection items do
+     *              not contain a common bundle/entity_id.
+     *
+     * @param $entity
+     */
+    public static function checkForSimilarEntityWarning($entity){
+      /*Get values of new entity */
+      $amount = $entity->get(IFBATypes::FIELD_APPROX_SAMPLE_AMOUNT)->value;;
+      $archComments = $entity->get(IFBATypes::FIELD_ARCHIVIST_COMMENTS)->value;
+      $contained = $entity->get(IFBATypes::FIELD_CONTAINED_IN)->target_id;
+      $dateCollect = $entity->get(IFBATypes::FIELD_DATE_COLLECTED)->value;//*
+      $mask = $entity->get(IFBATypes::FIELD_DATE_MASK)->target_id;
+      $fate = $entity->get(IFBATypes::FIELD_FATE)->target_id;
+      $fieldComments = $entity->get(IFBATypes::FIELD_FIELD_COMMENTS)->value;
+      $length = $entity->get(IFBATypes::FIELD_FISH_LENGTH)->value;
+      $origin = $entity->get(IFBATypes::FIELD_FISH_ORIGIN)->target_id;
+      //FC
+      $tagTypeFK = $entity->get(IFBATypes::FIELD_FISH_TAG_TYPE)->value;
+      //extract values
+      $fcTagTypeItem = FieldCollectionItem::load($tagTypeFK);
+      $fc_ArrayTag = $fcTagTypeItem->toArray();
+      //1
+      $tag_type_tid = 0;
+      foreach ($fc_ArrayTag[IFBATypes::FC_FIELD_TAG_TYPE] as $field){
+        $tag_type_tid = (int) $field['target_id'];
+        break;
+      }
+      debug($tag_type_tid);
+      //2
+      $tag_code_id_value = NULL;
+      foreach ($fc_ArrayTag[IFBATypes::FC_FIELD_TAG_CODE_ID] as $field){
+        $tag_code_id_value = $field['value'];
+        break;
+      }
+      debug($tag_code_id_value);
+      $weight = $entity->get(IFBATypes::FIELD_FISH_WEIGHT)->value;
+      //FC
+      $genderFK = $entity->get(IFBATypes::FIELD_GENDER)->value;
+      //extract values
+      $fcGenderItem = FieldCollectionItem::load($genderFK);
+      $fc_ArrayGender = $fcGenderItem->toArray();
+      //1
+      $field_sex_tid = 0;
+      foreach ($fc_ArrayGender[IFBATypes::FC_FIELD_SEX] as $field){
+        $field_sex_tid = (int) $field['target_id'];
+        break;
+      }
+      debug($field_sex_tid);
+      //2
+      $field_sex_source_tid = 0;
+      foreach ($fc_ArrayGender[IFBATypes::FC_FIELD_SEX_SOURCE] as $field){
+        $field_sex_source_tid = (int) $field['target_id'];
+        break;
+      }
+      debug($field_sex_source_tid);
+      $geographic = $entity->get(IFBATypes::FIELD_GEOGRAPHIC_FEATURE)->target_id;
+      $timeSeries = $entity->get(IFBATypes::FIELD_SAMPLE_IN_TIME_SERIES)->value;
+      $labNumber = $entity->get(IFBATypes::FIELD_LAB_NUMBER)->value;
+      $lifeStage = $entity->get(IFBATypes::FIELD_SAMPLE_LIFE_STAGE)->target_id;
+      //FC
+      $maturityFK = $entity->get(IFBATypes::FIELD_MATURITY)->value;
+      //extract values
+      $fcMaturityItem = FieldCollectionItem::load($maturityFK);
+      $fc_ArrayMaturity = $fcMaturityItem->toArray();
+      //1
+      $field_maturity_tid = 0;
+      foreach ($fc_ArrayMaturity[IFBATypes::FC_FIELD_MATURITY] as $field){
+        $field_maturity_tid = (int) $field['target_id'];
+        break;
+      }
+      debug($field_maturity_tid);
+      //2
+      $field_maturity_method_tid = 0;
+      foreach ($fc_ArrayMaturity[IFBATypes::FC_FIELD_MATURITY_DETERMINATION_METHOD] as $field){
+        $field_maturity_method_tid = (int) $field['target_id'];
+      }
+      debug($field_maturity_method_tid);
+      $repSample = $entity->get(IFBATypes::FIELD_REPRESENTATIVE_SAMPLE)->value;
+      $species =$entity->get(IFBATypes::FIELD_SAMPLE_SPECIES)->target_id;
+
+
+      //->condition(field name, value, operator)
+      $query = \Drupal::entityQuery('node');
+      $query->condition('type',IFBATypes::IRISH_FISHERIES_BIOCHRONOLOGY_ARCHIVE)
+        ->condition('status',1);
+
+      /* Apply AND conditions to same $query object. 'Values' must have null condition check */
+      is_null($amount) ? $query->condition(IFBATypes::FIELD_APPROX_SAMPLE_AMOUNT,NULL,'IS NULL') : $query->condition(IFBATypes::FIELD_APPROX_SAMPLE_AMOUNT,$amount,'=');
+      is_null($archComments) ? $query->condition(IFBATypes::FIELD_ARCHIVIST_COMMENTS,NULL,'IS NULL') : $query->condition(IFBATypes::FIELD_ARCHIVIST_COMMENTS,$archComments,'=');
+      $query->condition(IFBATypes::FIELD_CONTAINED_IN,$contained,'=');
+      is_null($dateCollect) ? $query->condition(IFBATypes::FIELD_DATE_COLLECTED,NULL, 'IS NULL') : $query->condition(IFBATypes::FIELD_DATE_COLLECTED,$dateCollect,'=');//change to date only
+      $query->condition(IFBATypes::FIELD_DATE_MASK,$mask,'=');
+      $query->condition(IFBATypes::FIELD_FATE,$fate,'=');
+      is_null($fieldComments) ? $query->condition(IFBATypes::FIELD_FIELD_COMMENTS,NULL,'IS NULL') : $query->condition(IFBATypes::FIELD_FIELD_COMMENTS,$fieldComments,'=');
+      is_null($length) ? $query->condition(IFBATypes::FIELD_FISH_LENGTH,NULL,'IS NULL') : $query->condition(IFBATypes::FIELD_FISH_LENGTH,$length,'=');
+      $query->condition(IFBATypes::FIELD_FISH_ORIGIN,$origin,'=');
+      //fc
+      is_null($weight) ? $query->condition(IFBATypes::FIELD_FISH_WEIGHT,NULL,'IS NULL') : $query->condition(IFBATypes::FIELD_FISH_WEIGHT,$weight,'=');
+      //fc
+      $query->condition(IFBATypes::FIELD_GEOGRAPHIC_FEATURE,$geographic,'=');
+      is_null($timeSeries) ? $query->condition(IFBATypes::FIELD_SAMPLE_IN_TIME_SERIES,NULL,'IS NULL') : $query->condition(IFBATypes::FIELD_SAMPLE_IN_TIME_SERIES,$timeSeries,'=');
+      is_null($labNumber) ? $query->condition(IFBATypes::FIELD_LAB_NUMBER,NULL,'IS NULL') : $query->condition(IFBATypes::FIELD_LAB_NUMBER,$labNumber,'=');
+      $query->condition(IFBATypes::FIELD_SAMPLE_LIFE_STAGE,$lifeStage,'=');
+      //fc
+      is_null($repSample) ? $query->condition(IFBATypes::FIELD_REPRESENTATIVE_SAMPLE,NULL,'IS NULL') : $query->condition(IFBATypes::FIELD_REPRESENTATIVE_SAMPLE,$repSample,'=');
+      $query->condition(IFBATypes::FIELD_SAMPLE_SPECIES,$species,'=');
+      
+      $node_ids = $query->execute();
+      debug($node_ids);//FUNCTION OPERATES TO HERE... 
+
+    $fc_query = \Drupal::entityQuery('field_collection_item')
+      ->condition('type',IFBATypes::FIELD_FISH_TAG_TYPE);
+
+    $fc_query->condition(IFBATypes::FC_FIELD_TAG_TYPE,$tag_type_tid,'=');
+    is_null($tag_code_id_value) ? $fc_query->condition(IFBATypes::FC_FIELD_TAG_CODE_ID,NULL,'IS NULL') : $fc_query->condition(IFBATypes::FC_FIELD_TAG_CODE_ID,$tag_code_id_value,'=');
+        $fc_query->condition(IFBATypes::FC_FIELD_MATURITY,$field_maturity_tid,'=');
+        $fc_query->condition(IFBATypes::FC_FIELD_MATURITY,$field_maturity_tid,'=');
+        $fc_query->condition(IFBATypes::FC_FIELD_MATURITY,$field_maturity_tid,'=');
+        $fc_query->condition(IFBATypes::FC_FIELD_MATURITY,$field_maturity_tid,'=');
+
+    $fc_node_ids = $fc_query->execute();
+
+    debug($fc_node_ids);
+    
+  }
