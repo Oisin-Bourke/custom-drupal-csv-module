@@ -80,7 +80,7 @@ class SampleImportForm extends FormBase {
   }
 
   /**
-   * Check file has been selected for upload
+   * Ensure a file has been selected for upload
    *
    * @param array $form
    *

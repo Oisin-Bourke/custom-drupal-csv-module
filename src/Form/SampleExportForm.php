@@ -49,7 +49,7 @@ class SampleExportForm extends FormBase {
 
     /* Get nodes entities of Sample Set Container for dropdown select/option */
     $dropdown_source = SampleExportHelper::readIfbaContainerData();
-    /* Set option at index 0 */
+    /* Set option at index key 0 */
     $dropdown_array = array( 0 => '-- EXPORT ALL --');
     /* Populate select/option with key (id) and value (title) */
     foreach ($dropdown_source as $item) {
@@ -57,6 +57,9 @@ class SampleExportForm extends FormBase {
       $value = $item->getTitle();
       $dropdown_array[$key] = $value;
     }
+
+    /*sort dropdown and maintain key value pairs */
+    natsort($dropdown_array);
 
     $form['container_filter'] = array(
       '#weight' => '1',
@@ -88,9 +91,9 @@ class SampleExportForm extends FormBase {
    *   The current state of the form.
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-     /* Get selected option by sample set container id. Default or '0' is  'select all'. */
+     /* Get selected option by sample set container id. Default '0' is 'select all'. */
     $container_id = (int) $form_state->getValue('container_filter');
-    /* Read sample data by selected conatiner */
+    /* Read sample data by selected container */
     $nodes_result = SampleExportHelper::readIfbaSampleData($container_id);
     /* Creates sample objects from data */
     $samples = SampleExportHelper::createSamplesFromNodes($nodes_result);
