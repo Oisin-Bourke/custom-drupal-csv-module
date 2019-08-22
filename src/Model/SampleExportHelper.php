@@ -14,7 +14,25 @@ use Drupal\node\Entity\Node;
 class SampleExportHelper {
 
   /**
+   * CSV header for IFBA samples export
+   *
+   * @return string
+   */
+  public static function writeSamplesCSVHeader(){
+    return  'id,approximateSampleAmount,archivistComments,containedIn,dateCollected,'
+      .'dateMasked,fate,fieldComments,fishLength,fishOrigin,fishTagType,'
+      .'fishWeight,sex,geographicFeature,ifbaTimeTable,labNumber,lifeStage,'
+      .'maturity,representativeSample,species'
+      .PHP_EOL;
+  }
+
+  /**
+   * Read IFBA Sample data from Drupal DB
+   *
    * @param $container_id
+   *  Container id is the Sample Set Container entity id.
+   *
+   *  If the value is '0' read all data, else filter by particular Sample Set Container.
    *
    * @return \Drupal\Core\Entity\EntityInterface[]|\Drupal\node\Entity\Node[]
    */
@@ -26,11 +44,11 @@ class SampleExportHelper {
 
     /* Use query object with condition filters to execute query and return node ids array */
     if($container_id===0) {
-        $node_ids = $query->condition('type', 'irish_fish_biochronology_archive')
+        $node_ids = $query->condition('type',IFBATypes::IRISH_FISHERIES_BIOCHRONOLOGY_ARCHIVE)
                           ->condition('status', 1)
                           ->execute();
     }else{
-        $node_ids = $query->condition('type', 'irish_fish_biochronology_archive')
+        $node_ids = $query->condition('type', IFBATypes::IRISH_FISHERIES_BIOCHRONOLOGY_ARCHIVE)
                           ->condition('field_contained_in',$container_id)
                           ->condition('status', 1)
                           ->execute();
@@ -42,9 +60,9 @@ class SampleExportHelper {
   }
 
   /**
-   * Read IFBA container data (not used)
+   * Read all IFBA Container data from Drupal DB
    *
-   * Read all IFBA container data from Drupal DB
+   * This function is used to populate the dropdown option/select
    *
    * @return \Drupal\Core\Entity\EntityInterface[]|\Drupal\node\Entity\Node[]
    */
@@ -53,7 +71,7 @@ class SampleExportHelper {
     $query = \Drupal::entityQuery('node');
 
     /*Use query object with condition filters to execute query and return node ids array*/
-    $node_ids = $query->condition('type','ifba_archive_container')
+    $node_ids = $query->condition('type',IFBATypes::IFBA_ARCHIVE_CONTAINER)
       ->condition('status',1)
       ->execute();
 
@@ -64,9 +82,9 @@ class SampleExportHelper {
   }
 
   /**
-   * Create sample objects array from nodes array
+   * Create sample objects array from nodes
    *
-   * The sample setters take a node and do the reading/processing from DB
+   * This function processes the nodes via the Sample class setters
    *
    * @param array $nodes_result
    *
@@ -108,20 +126,9 @@ class SampleExportHelper {
   }
 
   /**
-   * CSV header for ifba samples
+   * Write samples to CSV file (can take array of any object type)
    *
-   * @return string
-   */
-  public static function writeSamplesCSVHeader(){
-    return  'id,approximateSampleAmount,archivistComments,containedIn,dateCollected,'
-      .'dateMasked,fate,fieldComments,fishLength,fishOrigin,fishTagType,'
-      .'fishWeight,sex,geographicFeature,ifbaTimeTable,labNumber,lifeStage,'
-      .'maturity,representativeSample,species'
-      .PHP_EOL;
-  }
-
-  /**
-   * Write samples to CSV file...this could take an array of any object content types
+   * This function writes samples array to CSV using PHP built-in fputcsv
    *
    * @param array
    * An array of Sample objects

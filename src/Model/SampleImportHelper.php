@@ -11,11 +11,18 @@ class SampleImportHelper {
 
   /**
    * @var array
-   *  The required CSV header for imports
+   *  The required CSV header for imports.
    */
-  public static $requiredHeader = array('Label(sample id)','Approximate Sample Amount','Archivist Comments','Contained In','Date Collected','Date Mask','Fate', 'Field Comments',
-                          'Fish Length','Fish Origin','Fish Tag Type','Fish Tag ID','Fish Weight','Sex','Sex Determination Method','Geographic Feature','Is the sample in the IFBA Time Series table?',
-                          'Lab Number', 'Life Stage','Maturity','Maturity Determination Method','Representative Sample?','Species');
+  public static $requiredHeader
+    = array(IFBATypes::CSV_HEAD_SAMPLE_ID,IFBATypes::CSV_HEAD_APPROX_SAMPLE_AMOUNT,IFBATypes::CSV_HEAD_ARCHIVIST_COMMENTS,
+            IFBATypes::CSV_HEAD_CONTAINED_IN,IFBATypes::CSV_HEAD_DATE_COLLECTED,IFBATypes::CSV_HEAD_DATE_MASK,
+            IFBATypes::CSV_HEAD_FATE,IFBATypes::CSV_HEAD_FIELD_COMMENTS,IFBATypes::CSV_HEAD_FISH_LENGTH,
+            IFBATypes::CSV_HEAD_FISH_ORIGIN,IFBATypes::CSV_HEAD_FISH_TAG_TYPE,IFBATypes::CSV_HEAD_FISH_TAG_ID,
+            IFBATypes::CSV_HEAD_FISH_WEIGHT,IFBATypes::CSV_HEAD_SEX,IFBATypes::CSV_HEAD_SEX_DETERMINATION,
+            IFBATypes::CSV_HEAD_GEO_FEATURE,IFBATypes::CSV_HEAD_TIME_SERIES,IFBATypes::CSV_HEAD_LAB_NUMBER,
+            IFBATypes::CSV_HEAD_LIFE_STAGE, IFBATypes::CSV_HEAD_MATURITY,IFBATypes::CSV_HEAD_MATURITY_DETER,
+            IFBATypes::CSV_HEAD_REP_SAMPLE,IFBATypes::CSV_HEAD_SPECIES
+    );
 
   /**
    * Read CSV file for data import
@@ -28,7 +35,7 @@ class SampleImportHelper {
    *  Array of associate arrays or false if error
    *
    * @throws \Exception
-   *  Throw exception if header does not match required header and inform user
+   *  Throw exception if header does not match required header and inform user of error
    */
   public static function readCSVFile($fileName,$requiredHeader){
 
@@ -51,7 +58,11 @@ class SampleImportHelper {
       }
       fclose($handle);
     }
-    /* Check for difference between read header and required header */
+    /* Ensure correct number of fields */
+    if(count($header)!==count($requiredHeader)){
+      throw new \Exception('Error.  Expecting '. count($requiredHeader) . ' number of fields. Read file contains '.count($header). ' fields.');
+    }
+    /* Check for difference between header and required header */
     $difference = array_diff($header,$requiredHeader);
     /*Throw exception and inform user of first field error mismatch */
     if(!empty($difference)){
@@ -75,7 +86,7 @@ class SampleImportHelper {
    *  An array to hold sample objects in case of exception error -> retroactively delete all records.
    *
    * @return string
-   *  If all entities crated return simple message for user
+   *  If all entities created return simple message for user
    *
    * @throws \Drupal\Core\Entity\EntityStorageException
    *  MySQL type errors saving to Drupal database (@catch on form submit)
@@ -91,125 +102,127 @@ class SampleImportHelper {
   public static function createEntitiesFromData($data) {
     /* An array to hold the entity sample objects for deletion if any exceptions encountered */
     $safetyDeleteStorage = [];
+    /* A counter to inform user of row error */
+    $rowCount = 2;
 
-    $rowCount = 2;//first row of excel data
-
+    /* Iterate array of arrays to create new entities*/
       foreach ($data as $array) {
         try {
           /* Create node and then set fields programmatically */
-          $sample = Node::create(['type' => 'irish_fish_biochronology_archive']);
+          $sample = Node::create(['type' => IFBATypes::IRISH_FISHERIES_BIOCHRONOLOGY_ARCHIVE ]);
 
-          /*Check for duplicate entry by 'Sample ID' (title/PK) */
-          $sample_ID = $array['Label(sample id)'];
-          self::checkForDuplicatePK($rowCount,'irish_fish_biochronology_archive',$sample_ID);
+          /* 1st check for duplicate entry by 'Sample ID' (title/PK) */
+          $sample_ID = $array[IFBATypes::CSV_HEAD_SAMPLE_ID];
+          self::checkForDuplicatePK($rowCount,IFBATypes::IRISH_FISHERIES_BIOCHRONOLOGY_ARCHIVE,$sample_ID);
           $sample->set('title', $sample_ID);
 
           //value
-          $sample->set('field_approx_sample_amount', $array['Approximate Sample Amount']);
+          $sample->set(IFBATypes::FIELD_APPROX_SAMPLE_AMOUNT, $array[IFBATypes::CSV_HEAD_APPROX_SAMPLE_AMOUNT]);
           //value
-          $sample->set('field_archivist_comments', $array['Archivist Comments']);
+          $sample->set(IFBATypes::FIELD_ARCHIVIST_COMMENTS, $array[IFBATypes::CSV_HEAD_ARCHIVIST_COMMENTS]);
           //node ref
-          $target_id = self::turnValueToNodeTid($sample_ID,$rowCount,'ifba_archive_container', $array['Contained In']);
-          $sample->set('field_contained_in', $target_id);
+          $target_id = self::turnValueToNodeTid($sample_ID,$rowCount,IFBATypes::IFBA_ARCHIVE_CONTAINER, $array[IFBATypes::CSV_HEAD_CONTAINED_IN]);
+          $sample->set(IFBATypes::FIELD_CONTAINED_IN, $target_id);
           //date: drupal date format (varchar not datetime in MySQL) *minor glitch on time 01:00:00
-          $rawDate = $array['Date Collected'];
+          $rawDate = $array[IFBATypes::CSV_HEAD_DATE_COLLECTED];
           $dateFormat = date('Y-m-d', strtotime(str_replace('-', '/', $rawDate)));
           $dateTimeFormat = $dateFormat . 'T00:00:00';
-          $sample->set('field_date_collected', $dateTimeFormat);
+          $sample->set(IFBATypes::FIELD_DATE_COLLECTED, $dateTimeFormat);
           //taxonomy
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'marine_institute_date_mask', $array['Date Mask']);
-          $sample->set('field_date_mask', $target_id);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::MARINE_INSTITUTE_DATE_MASK, $array[IFBATypes::CSV_HEAD_DATE_MASK]);
+          $sample->set(IFBATypes::FIELD_DATE_MASK, $target_id);
           //taxonomy
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'ifba_sample_fate', $array['Fate']);
-          $sample->set('field_fate', $target_id);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::IFBA_SAMPLE_FATE, $array[IFBATypes::CSV_HEAD_FATE]);
+          $sample->set(IFBATypes::FIELD_FATE, $target_id);
           //value
-          $sample->set('field_field_comments', $array['Field Comments']);
+          $sample->set(IFBATypes::FIELD_FIELD_COMMENTS, $array[IFBATypes::CSV_HEAD_FIELD_COMMENTS]);
           //value
-          $sample->set('field_fish_length', $array['Fish Length']);
+          $sample->set(IFBATypes::FIELD_FISH_LENGTH, $array[IFBATypes::CSV_HEAD_FISH_LENGTH]);
           //taxonomy
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'ifba_sample_fish_origin', $array['Fish Origin']);
-          $sample->set('field_fish_origin', $target_id);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::IFBA_SAMPLE_FISH_ORIGIN, $array[IFBATypes::CSV_HEAD_FISH_ORIGIN]);
+          $sample->set(IFBATypes::FIELD_FISH_ORIGIN, $target_id);
           //*field collection items
-          $fishTagType = $array['Fish Tag Type'];
-          $fishTagId = $array['Fish Tag ID'];
+          $fishTagType = $array[IFBATypes::CSV_HEAD_FISH_TAG_TYPE];
+          $fishTagId = $array[IFBATypes::CSV_HEAD_FISH_TAG_TYPE];
           //value
-          $sample->set('field_fish_weight', $array['Fish Weight']);
+          $sample->set(IFBATypes::FIELD_FISH_WEIGHT, $array[IFBATypes::CSV_HEAD_FISH_WEIGHT]);
           //*field collection items
-          $sex = $array['Sex'];
-          $sexDeterminationMethod = $array['Sex Determination Method'];
+          $sex = $array[IFBATypes::CSV_HEAD_SEX];
+          $sexDeterminationMethod = $array[IFBATypes::CSV_HEAD_SEX_DETERMINATION];
           //node ref
-          $target_id = self::turnValueToNodeTid($sample_ID,$rowCount,'feature', $array['Geographic Feature']);
-          $sample->set('field_geographic_feature', $target_id);
+          $target_id = self::turnValueToNodeTid($sample_ID,$rowCount,IFBATypes::FEATURE, $array[IFBATypes::CSV_HEAD_GEO_FEATURE]);
+          $sample->set(IFBATypes::FIELD_GEOGRAPHIC_FEATURE, $target_id);
           //boolean
           $ts_value = 0;//default is unchecked
-          if ($array['Is the sample in the IFBA Time Series table?'] == 'On') {
-            $ts_value = 1;
-          }
-          $sample->set('field_sample_in_time_series', $ts_value);
+          if ($array[IFBATypes::CSV_HEAD_TIME_SERIES] == 'On') { $ts_value = 1;}
+          $sample->set(IFBATypes::FIELD_SAMPLE_IN_TIME_SERIES, $ts_value);
           //value
-          $sample->set('field_lab_number', $array['Lab Number']);
+          $sample->set(IFBATypes::FIELD_LAB_NUMBER, $array[IFBATypes::CSV_HEAD_LAB_NUMBER]);
           //taxonomy
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'ifba_sample_life_stage', $array['Life Stage']);
-          $sample->set('field_sample_life_stage', $target_id);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::IFBA_SAMPLE_LIFE_STAGE, $array[IFBATypes::CSV_HEAD_LIFE_STAGE]);
+          $sample->set(IFBATypes::FIELD_SAMPLE_LIFE_STAGE, $target_id);
           //*field collection
-          $maturity = $array['Maturity'];
-          $maturityDeterminationMethod = $array['Maturity Determination Method'];
-          //boolean check
+          $maturity = $array[IFBATypes::CSV_HEAD_MATURITY];
+          $maturityDeterminationMethod = $array[IFBATypes::CSV_HEAD_MATURITY_DETER];
+          //boolean
           $rs_value = 0;//default unchecked
-          if ($array['Representative Sample?'] == 'On') {
-            $rs_value = 1;
-          }
-          $sample->set('field_representative_sample_', $rs_value);
+          if ($array[IFBATypes::CSV_HEAD_REP_SAMPLE] == 'On') { $rs_value = 1;}
+          $sample->set(IFBATypes::FIELD_REPRESENTATIVE_SAMPLE, $rs_value);
           //taxonomy
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'world_register_of_marine_species', $array['Species']);
-          $sample->set('field_sample_species', $target_id);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::WORLD_REGISTER_OF_MARINE_SPECIES, $array[IFBATypes::CSV_HEAD_SPECIES]);
+          $sample->set(IFBATypes::FIELD_SAMPLE_SPECIES, $target_id);
           //save new sample node
           $sample->enforceIsNew();
           $sample->save();
           //push to array for potential delete if encounter exception
-          //debug('Sample with internal ID '.$sample->id().' created.');
           array_push($safetyDeleteStorage, $sample);
-          /*field collection items - must have valid HostEntity ($sample) to create field collection item children*/
+
+          /**
+           * Field collection items must have valid HostEntity ($sample) to create field collection item children
+           */
           //field collection item
-          $fishTagFC_Item = FieldCollectionItem::create(['field_name' => 'field_fish_tag_type']);
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'ifba_tag_type', $fishTagType);
-          $fishTagFC_Item->set('field_tag_type', $target_id);
-          $fishTagFC_Item->set('field_tag_code_id', $fishTagId);
+          $fishTagFC_Item = FieldCollectionItem::create(['field_name' => IFBATypes::FIELD_FISH_TAG_TYPE]);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::IFBA_TAG_TYPE, $fishTagType);
+          $fishTagFC_Item->set(IFBATypes::FC_FIELD_TAG_TYPE, $target_id);
+          $fishTagFC_Item->set(IFBATypes::FC_FIELD_TAG_CODE_ID, $fishTagId);
           $fishTagFC_Item->setHostEntity($sample);
           $fishTagFC_Item->save();
-          //debug('FC with internal ID '.$fishTagFC_Item->id().' created.');
           //field collection item
-          $fishSexFC_Item = FieldCollectionItem::create(['field_name' => 'field_gender']);
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'ices_gender_of_the_sampled_speci', $sex);
-          $fishSexFC_Item->set('field_sex', $target_id);
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'ifba_sample_sex_source', $sexDeterminationMethod);
-          $fishSexFC_Item->set('field_sex_source', $target_id);
+          $fishSexFC_Item = FieldCollectionItem::create(['field_name' => IFBATypes::FIELD_GENDER]);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::ICES_SAMPLE_OF_THE_SAMPLED_SPECI, $sex);
+          $fishSexFC_Item->set(IFBATypes::FC_FIELD_SEX, $target_id);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::IFBA_SAMPLE_SEX_SOURCE, $sexDeterminationMethod);
+          $fishSexFC_Item->set(IFBATypes::FC_FIELD_SEX_SOURCE, $target_id);
           $fishSexFC_Item->setHostEntity($sample);
           $fishSexFC_Item->save();
-          //debug('FC with internal ID '.$fishSexFC_Item->id().' created.');
           //field collection item
-          $maturityFC_Item = FieldCollectionItem::create(['field_name' => 'field_maturity']);
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'ifba_sample_observed_maturity', $maturity);
-          $maturityFC_Item->set('field_maturity', $target_id);
-          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, 'ifba_sample_maturity_source', $maturityDeterminationMethod);
-          $maturityFC_Item->set('field_maturity_determination_met', $target_id);
+          $maturityFC_Item = FieldCollectionItem::create(['field_name' => IFBATypes::FIELD_MATURITY]);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::IFBA_SAMPLE_OBSERVED_MATURITY, $maturity);
+          $maturityFC_Item->set(IFBATypes::FC_FIELD_MATURITY, $target_id);
+          $target_id = self::turnValueToTaxonomyTid($sample_ID,$rowCount, IFBATypes::IFBA_SAMPLE_MATURITY_SOURCE, $maturityDeterminationMethod);
+          $maturityFC_Item->set(IFBATypes::FC_FIELD_MATURITY_DETERMINATION_METHOD, $target_id);
           $maturityFC_Item->setHostEntity($sample);
           $maturityFC_Item->save();
-          //debug('FC with internal ID '.$maturityFC_Item->id().' created.');
+
+          /**
+           * Implement potential warning here
+           *
+           * See root of GitHub and file NotImplementedSQLWarningFunction.txt for incomplete function
+           *
+           * checkForSimilarEntityWarning($sample);
+           */
 
           $rowCount++;
         } catch (EntityStorageException $e) {
-          /* If encounter any storage exceptions delete all entities for that import process */
+          /* If encounter any storage exceptions delete all entities and children for that import process */
           foreach ($safetyDeleteStorage as $entity) {
             $entity->delete();
-            //debug('Entity with internal ID '.$entity->id().' deleted.');
           }
           throw $e;//catch in form submit
         } catch (\Exception $e) {
-          /* If encounter PK/title duplicate, FK mismatch, or taxonomy term mismatch, delete all entities for that import process */
+          /* If encounter PK/title duplicate, FK mismatch, or taxonomy term mismatch, delete all entities and children for that import process */
           foreach ($safetyDeleteStorage as $entity) {
             $entity->delete();
-            //debug('Entity with internal ID '.$entity->id().' deleted.');
           }
           throw $e;//catch in form submit
         }
@@ -256,7 +269,7 @@ class SampleImportHelper {
     }
     /* If the target_id is still '0' then no matching term */
     if($target_id === 0){
-      /* If the value is empty allow to continue */
+      /* If the field value is empty do not throw error exception*/
       if($value==''){
         return $target_id;//0
       }
@@ -304,7 +317,7 @@ class SampleImportHelper {
         return $target_id;
       }
     }
-    /* If the target_id is still '0' then no matching container title */
+    /* If the target_id is still '0' then no matching node title and inform user of error*/
     if($target_id === 0){
       throw new \Exception('Error. No records created. Invalid term: '. $value .' (with respect to type: '.$bundle.', See: Sample ID: ' . $sample_ID .', at row: '.$rowCount.' )');
     }
@@ -335,7 +348,7 @@ class SampleImportHelper {
       ->execute();
 
     $nodes = Node::loadMultiple($node_ids);
-
+    /* If find matching title (user PK) inform user of error */
     foreach ($nodes as $node){
       $name = $node->getTitle();
       if($name == $sample_ID) {
@@ -343,7 +356,5 @@ class SampleImportHelper {
       }
     }
   }
-
-
 
 }
